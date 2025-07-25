@@ -1,0 +1,40 @@
+name: Build EXE
+
+on:
+  push:
+    branches:
+      - 'feature/*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install yt-dlp pyinstaller
+
+      - name: Build EXE
+        run: |
+          pyinstaller --onefile --noconsole app.py
+
+      - name: Zip artifact
+        run: |
+          Compress-Archive -Path dist/app.exe -DestinationPath youtube_cutter.zip
+
+      - name: Set release tag
+        id: vars
+        run: echo "tag=${{ github.ref_name }}-${{ github.run_number }}" >> $Env:GITHUB_OUTPUT
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          files: youtube_cutter.zip
+          prerelease: true
