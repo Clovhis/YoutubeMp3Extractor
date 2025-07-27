@@ -5,7 +5,7 @@ Aplicación de escritorio en Python para descargar un fragmento de un video de Y
 ## ¿Qué hace la aplicación?
 
 1. Permite ingresar la URL de un video de YouTube.
-2. Se elige un tiempo de inicio y de fin (en formato `mm:ss` o `hh:mm:ss`).
+2. Se elige un tiempo de inicio y de fin (en formato `m:ss` o `h:m:ss`).
 3. Al presionar el botón, descarga solo ese fragmento utilizando `yt-dlp`.
 4. Convierte el audio a `mp3` mediante `ffmpeg`.
 5. Guarda el resultado en `C:\YoutubeCuts` (se crea automáticamente si no existe).
@@ -25,7 +25,7 @@ python app.py
 ```
 
 1. Ingresa la URL de YouTube.
-2. Especifica el tiempo de inicio y fin del fragmento.
+2. Especifica el tiempo de inicio y fin del fragmento (por ejemplo `9:34` o `1:02:30`).
 3. Presiona **Download clip** y espera el mensaje de éxito.
 
 El archivo MP3 se guardará dentro de `C:\YoutubeCuts`.
