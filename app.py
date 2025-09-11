@@ -1,6 +1,7 @@
 import os
 import subprocess
 import datetime
+import shutil
 import tkinter as tk
 from tkinter import messagebox
 
@@ -31,8 +32,19 @@ def normalize_time(value: str) -> str:
 
     return f"{h:02d}:{m:02d}:{s:02d}"
 
+
+def time_to_seconds(value: str) -> int:
+    """Convert a HH:MM:SS string to total seconds."""
+    h, m, s = map(int, value.split(":"))
+    return h * 3600 + m * 60 + s
+
 def download_audio_clip(url: str, start: str, end: str, out_dir: str = r"C:\\YoutubeCuts") -> str:
     """Download a segment of a YouTube video and convert it to MP3."""
+    if not shutil.which("yt-dlp"):
+        raise EnvironmentError("yt-dlp not found. Please install it and ensure it is in PATH.")
+    if not shutil.which("ffmpeg"):
+        raise EnvironmentError("ffmpeg not found. Please install it and ensure it is in PATH.")
+
     os.makedirs(out_dir, exist_ok=True)
 
     # Get video title
@@ -124,6 +136,8 @@ class YoutubeCutterApp(tk.Tk):
         try:
             start_t = normalize_time(start)
             end_t = normalize_time(end)
+            if time_to_seconds(start_t) >= time_to_seconds(end_t):
+                raise ValueError("End time must be after start time")
             output = download_audio_clip(url, start_t, end_t)
             messagebox.showinfo("Success", f"Saved to: {output}")
             try:
