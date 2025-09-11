@@ -58,20 +58,21 @@ def download_audio_clip(url: str, start: str, end: str, out_dir: str = r"C:\\You
 
     temp_pattern = os.path.join(out_dir, f"temp_{timestamp}.%(ext)s")
 
-    # Download only the selected section
+    # Download only the selected section and convert directly to MP3
     cmd_dl = [
         "yt-dlp",
-        "-f", "bestaudio",
+        "-f", "bestaudio[ext=m4a]/bestaudio",
         "--download-sections", f"*{start}-{end}",
+        "--extract-audio", "--audio-format", "mp3",
         "-o", temp_pattern,
         url
     ]
     subprocess.run(cmd_dl, check=True)
 
-    # Find the downloaded file (yt-dlp replaces %%(ext)s)
+    # Find the downloaded MP3 (yt-dlp replaces %%(ext)s)
     temp_file = None
     for f in os.listdir(out_dir):
-        if f.startswith(f"temp_{timestamp}") and not f.endswith('.mp3'):
+        if f.startswith(f"temp_{timestamp}") and f.endswith('.mp3'):
             temp_file = os.path.join(out_dir, f)
             break
     if not temp_file:
@@ -79,15 +80,7 @@ def download_audio_clip(url: str, start: str, end: str, out_dir: str = r"C:\\You
 
     mp3_name = f"{safe_title}_{timestamp}.mp3"
     mp3_path = os.path.join(out_dir, mp3_name)
-
-    cmd_ff = [
-        "ffmpeg", "-y", "-i", temp_file,
-        "-vn", "-acodec", "libmp3lame",
-        mp3_path
-    ]
-    subprocess.run(cmd_ff, check=True)
-
-    os.remove(temp_file)
+    os.rename(temp_file, mp3_path)
     return mp3_path
 
 # --- GUI Application -------------------------------------------------------
