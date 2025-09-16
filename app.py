@@ -38,8 +38,17 @@ def time_to_seconds(value: str) -> int:
     h, m, s = map(int, value.split(":"))
     return h * 3600 + m * 60 + s
 
+
+def _command_error(prefix: str, exc: subprocess.CalledProcessError) -> RuntimeError:
+    detail = (exc.stderr or '').strip() or (exc.stdout or '').strip()
+    if detail:
+        detail = detail.splitlines()[-1]
+        return RuntimeError(f"{prefix}: {detail}")
+    return RuntimeError(f"{prefix}: {exc}")
+
+
 def download_audio_clip(url: str, start: str, end: str, out_dir: str = r"C:\\YoutubeCuts") -> str:
-    """Download a segment of a YouTube video and convert it to MP3."""
+    """Download audio from YouTube and cut the requested segment to MP3."""
     if not shutil.which("yt-dlp"):
         raise EnvironmentError("yt-dlp not found. Please install it and ensure it is in PATH.")
     if not shutil.which("ffmpeg"):
@@ -47,10 +56,9 @@ def download_audio_clip(url: str, start: str, end: str, out_dir: str = r"C:\\You
 
     os.makedirs(out_dir, exist_ok=True)
 
-    # Get video title
     try:
-        title = subprocess.check_output(["yt-dlp", "--get-title", url], text=True).strip()
-    except Exception:
+        title = subprocess.check_output(["yt-dlp", "--get-title", url], text=True, stderr=subprocess.STDOUT).strip()
+    except subprocess.CalledProcessError:
         title = "video"
     safe_title = sanitize_filename(title)[:20] or "video"
 
@@ -58,18 +66,18 @@ def download_audio_clip(url: str, start: str, end: str, out_dir: str = r"C:\\You
 
     temp_pattern = os.path.join(out_dir, f"temp_{timestamp}.%(ext)s")
 
-    # Download only the selected section and convert directly to MP3
     cmd_dl = [
         "yt-dlp",
         "-f", "bestaudio[ext=m4a]/bestaudio",
-        "--download-sections", f"*{start}-{end}",
         "--extract-audio", "--audio-format", "mp3",
         "-o", temp_pattern,
-        url
+        url,
     ]
-    subprocess.run(cmd_dl, check=True)
+    try:
+        subprocess.run(cmd_dl, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        raise _command_error("yt-dlp failed", exc)
 
-    # Find the downloaded MP3 (yt-dlp replaces %%(ext)s)
     temp_file = None
     for f in os.listdir(out_dir):
         if f.startswith(f"temp_{timestamp}") and f.endswith('.mp3'):
@@ -78,9 +86,32 @@ def download_audio_clip(url: str, start: str, end: str, out_dir: str = r"C:\\You
     if not temp_file:
         raise FileNotFoundError("Downloaded file not found")
 
+    clip_temp = os.path.join(out_dir, f"temp_{timestamp}_clip.mp3")
+    ffmpeg_cmd = [
+        "ffmpeg",
+        "-y",
+        "-ss", start,
+        "-to", end,
+        "-i", temp_file,
+        "-vn",
+        "-c:a", "libmp3lame",
+        "-q:a", "2",
+        clip_temp,
+    ]
+    try:
+        subprocess.run(ffmpeg_cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        raise _command_error("ffmpeg failed", exc)
+
     mp3_name = f"{safe_title}_{timestamp}.mp3"
     mp3_path = os.path.join(out_dir, mp3_name)
-    os.rename(temp_file, mp3_path)
+    os.replace(clip_temp, mp3_path)
+
+    try:
+        os.remove(temp_file)
+    except OSError:
+        pass
+
     return mp3_path
 
 # --- GUI Application -------------------------------------------------------
